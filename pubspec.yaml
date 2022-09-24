@@ -39,6 +39,8 @@ dependencies:
   appwrite: ^8.1.0
   isar: 3.0.0-dev.14
   isar_flutter_libs: 3.0.0-dev.14
+  internet_connection_checker_plus: ^1.0.1
+
 
 dev_dependencies:
   flutter_test:
