@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
-import 'package:offline_support_for_db/src/isar_appwrite.dart';
-import 'package:offline_support_for_db/src/local_database/isar/collections/example/example_collection.dart';
+import 'package:offline_support_for_db/backend.dart';
+import 'package:offline_support_for_db/example_model/example_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await IsarAppwrite.instance.init();
-  runApp( MyApp());
+  await Backend.instance.init();
+  runApp(MyApp());
 }
-class MyApp extends StatelessWidget{
+
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: MyHomePage(),
     );
   }
-
-
 }
+
 class MyHomePage extends StatefulWidget {
   const MyHomePage({super.key});
 
@@ -25,106 +25,84 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-
-  List<Example> testOnline = [];
-  List<Example> testPending = [];
+  final Backend _backend = Backend.instance;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-        appBar: AppBar(
-          title: Text('Test'),
-        ),
-        body: Column(
-          children: [
-            Text('Synced'),
-            StreamBuilder(
-              stream: IsarAppwrite.instance.watchExamples(),
-              builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                print(snapshot);
-                return Container(
-                  height: 300,
-                  child: ListView.builder(
-                    itemCount: testPending.length,
-                    itemBuilder: (BuildContext context, int index) {
-                      return ListTile(
-                        title: Text(testPending[index].text),
-                        subtitle: Text(testPending[index].syncedAt.toString()),
-                        onLongPress: (){
+    return Material(
+      color: Colors.white,
+      child: Column(
+        children: [
+          StreamBuilder(
+            initialData: [],
+            stream: _backend.watchExamples(),
+            builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
+              List<dynamic> examples = snapshot.data;
 
-                        },
-                        onTap: (){
-
-                        },
-                      );
-                    },
-                  ),
-                );
-              },
-
-            ),
-            Text('Pending'),
-            StreamBuilder(
-              stream: IsarAppwrite.instance.watchPendingExamples(),
-              builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
-                print(snapshot);
-              return Container(
-                height: 300,
+              return SizedBox(
+                height: 500,
                 child: ListView.builder(
-                  itemCount: testPending.length,
+                  itemCount: snapshot.data.length,
                   itemBuilder: (BuildContext context, int index) {
-                    return ListTile(
-                      title: Text(testPending[index].text),
-                      subtitle: Text(testPending[index].syncedAt.toString()),
-                      onLongPress: (){
-
-                      },
-                      onTap: (){
-
-                      },
+                    return Container(
+                      color: Colors.grey.shade200,
+                      height: 100,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(examples[index].id.toString()),
+                          Text(examples[index].text.toString()),
+                          Column(
+                            children: [
+                              Text(examples[index]
+                                  .updatedAt
+                                  .toString()
+                                  .split('T')[0]),
+                              Text(examples[index]
+                                  .createdAt
+                                  .toString()
+                                  .split('T')[0]),
+                              Text(examples[index]
+                                  .syncedAt
+                                  .toString()
+                                  .split('T')[0]),
+                            ],
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          ),
+                          ElevatedButton(
+                              onPressed: () {
+                                _backend.updateExample(examples[index]);
+                              },
+                              child: Text('Update')),
+                          ElevatedButton(
+                              onPressed: () {
+                                _backend.deleteExample(examples[index].id);
+                              }, child: Text('Delete')),
+                        ],
+                      ),
                     );
                   },
                 ),
               );
             },
-
-            ),
-            Row(
-              children: [
-                ElevatedButton(onPressed: (){
-                  TextEditingController id = TextEditingController();
-                  TextEditingController text = TextEditingController();
-                  showDialog(context: context, builder: (BuildContext context) {
-                    return Dialog(
-                      child: Container(
-                        height: 500,
-                        child: Column(
-                          children: [
-                            Text('Create'),
-                            TextField(
-                              controller: id,
-                            ),
-                            TextField(
-                              controller: text,
-                            ),
-                            ElevatedButton(onPressed: (){
-                              Example example = Example(text: text.text)..id = id.text.length
-                              ..createdAt = DateTime.now().toIso8601String();
-                              IsarAppwrite.instance.createExample(example: example);
-                            }, child: Text('create'))
-                          ],
-                        ),
-                      ),
-
-                    );
-                  },);
-                }, child: Text('Create')),
-                ElevatedButton(onPressed: (){}, child: Text('Update')),
-                ElevatedButton(onPressed: (){}, child: Text('Delete')),
-                ElevatedButton(onPressed: (){}, child: Text('Sync')),
-              ],
-            )
-          ],
-        ));
+          ),
+          ElevatedButton(
+              onPressed: () {
+                _backend.createExample();
+              },
+              child: Text('Create')),
+          ElevatedButton(
+              onPressed: () {
+                _backend.clearDatabase();
+              },
+              child: Text('Clear examples')),
+          ElevatedButton(
+              onPressed: () {
+                _backend.syncExamplesToServer();
+              },
+              child: Text('SyncExamples')),
+        ],
+      ),
+    );
   }
 }
