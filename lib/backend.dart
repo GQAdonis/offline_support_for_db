@@ -18,10 +18,15 @@ class Backend {
               'https://8080-appwrite-integrationfor-52tyj68ojp0.ws-eu67.gitpod.io/v1')
       .setProject('632da69f3cc14b8f209c')
       .setSelfSigned(status: true);
+  late final Functions _functions = Functions(_client);
+  late final Realtime _realtime = Realtime(_client);
+  late final Account _account = Account(_client);
+  late final Databases _databases = Databases(_client);
+
 
   init() async {
-    _isar = await Isar.open([ExampleModelSchema, PendingModelSchema]);
-    openNetworkWatcher();
+      _isar = await Isar.open([ExampleModelSchema, PendingModelSchema]);
+      openNetworkWatcher();
   }
 
   openNetworkWatcher() {
@@ -30,6 +35,7 @@ class Backend {
     });
     test.pause();
     InternetConnectionCheckerPlus().onStatusChange.listen((status) async {
+      print(status);
       if(status == InternetConnectionStatus.connected){
         await syncExamplesToServer();
         await appwriteWatchExamples();
@@ -51,7 +57,6 @@ class Backend {
       ..createdAt = now;
     await _isar.writeTxn(() async {
       _isar.exampleModels.put(example);
-      final tst = await _isar.exampleModels.where().findAll();
     });
   }
 
@@ -93,14 +98,14 @@ class Backend {
         .then((value) async {
       List<ExampleModel> exampleList = [];
 
-      value.documents.forEach((element) {
+      for (var element in value.documents) {
         ExampleModel exampleModel = ExampleModel(text: element.data['text'])
           ..id = int.tryParse(element.$id)
           ..updatedAt = element.$updatedAt
           ..createdAt = element.$createdAt
           ..syncedAt = DateTime.now().toIso8601String();
           exampleList.add(exampleModel);
-      });
+      }
 
       await _isar.writeTxn(() async {
         _isar.exampleModels.clear();
@@ -110,12 +115,14 @@ class Backend {
       print(e);
     });
 
-    Realtime(_client)
+
+    StreamSubscription<RealtimeMessage> examplesRealtimeSubscription;
+    examplesRealtimeSubscription = _realtime
         .subscribe(['databases.ExampleDatabase.collections.Examples.documents'])
         .stream
         .listen((event) {
-          print(event.payload);
-          print(event);
+          print(event.events.first);
+
           final payload = event.payload;
           ExampleModel exampleModel = ExampleModel(text: payload['text']);
           exampleModel
@@ -127,10 +134,11 @@ class Backend {
             _isar.exampleModels.put(exampleModel);
           });
 
-        }).onError((e){
-          print(e);
-          // Todo Reopen
-    });
+        })..onError((e){
+      print(e);
+      
+      // Todo Reopen or pending
+    })..onDone(() {print('test');});
   }
 
   syncExamplesToServer() async {
@@ -162,6 +170,8 @@ class Backend {
             print('offline create');
           });
         } else if (example.updatedAt != example.createdAt) {
+
+
           await Databases(_client).updateDocument(
               databaseId: 'ExampleDatabase',
               collectionId: 'Examples',
@@ -169,7 +179,7 @@ class Backend {
               data: {
                 'text': example.text,
                 '\$updatedAt': example.updatedAt
-              }).then((value) {
+              }).then((value) async {
             print('UpdateSuccess');
             example.syncedAt = DateTime.now().toIso8601String();
             _isar.exampleModels.put(example);
@@ -186,64 +196,57 @@ class Backend {
           collectionId: 'Examples',
           documentId: pendingDelete.id.toString(),
         )
-            .then((value) {
+            .then((value) async {
           print('DeleteSuccess');
           _isar.pendingModels.delete(pendingDelete.id!);
         }, onError: (e) {
-          print('offline update');
+          print(e.code);
+          if(e.code == 404){
+            _isar.pendingModels.delete(pendingDelete.id!);
+          }
         });
       }
     });
   }
 
   syncFunctionCall() {}
-}
 
+  executeFunction(){
+    Future result = _functions.createExecution(
+      functionId: '[FUNCTION_ID]',
+    );
 
-/*class PendingRepository {
-  final Ref ref;
-  final Isar isarPending;
-
-  PendingRepository({required this.ref, required this.isarPending}) {
-    _init();
-  }
-
-  _init() async {
-    InternetConnectionCheckerPlus().onStatusChange.listen((status) {
-      print(status);
-      StreamSubscription? isarPendingStream;
-      if (status == InternetConnectionStatus.connected) {
-        if(isarPendingStream == null) {
-          isarPendingStream =
-              isarPending.userModels.watchLazy().listen((event) {
-                syncUsersWithServer();
-              });
-        }else{
-          if(isarPendingStream.isPaused) {
-            isarPendingStream.resume();
-          }
-        }
-      }else{
-        if(isarPendingStream != null){
-          isarPendingStream.pause();
-        }
-      }
+    result
+        .then((response) {
+      print(response);
+    }).catchError((error) {
+      print(error.response);
     });
   }
+}
 
-  syncUsersWithServer() async {
-    InternetConnectionStatus status = await InternetConnectionCheckerPlus().connectionStatus;
-    if(status == InternetConnectionStatus.connected){
-      List<UserModel> userModels =
-      await isarPending.userModels.where().findAll();
-      userModels.first;
-      // response = await backend method;
-      bool wasComitedToServer = await ref.read(appwriteRepositoryProvider).createUser(userModels.first);
-      // response success = delete object
-      if (wasComitedToServer) {
-        isarPending.userModels.delete(userModels.first.id!);
-      }
-    }
-  }
+//offline
+// nickname
+// name
+// Bio
 
-}*/
+// online
+// name
+
+// result
+// name
+
+// save changes
+
+//offline
+// nickname
+// name
+// Bio
+
+// online
+// name
+
+// result
+// nameNewer
+// nickname
+// Bio

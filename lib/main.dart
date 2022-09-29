@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:offline_support_for_db/backend.dart';
-import 'package:offline_support_for_db/example_model/example_model.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Backend.instance.init();
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       home: MyHomePage(),
     );
   }
@@ -34,7 +35,7 @@ class _MyHomePageState extends State<MyHomePage> {
       child: Column(
         children: [
           StreamBuilder(
-            initialData: [],
+            initialData: const [],
             stream: _backend.watchExamples(),
             builder: (BuildContext context, AsyncSnapshot<dynamic> snapshot) {
               List<dynamic> examples = snapshot.data;
@@ -53,6 +54,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           Text(examples[index].id.toString()),
                           Text(examples[index].text.toString()),
                           Column(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               Text(examples[index]
                                   .updatedAt
@@ -67,17 +69,16 @@ class _MyHomePageState extends State<MyHomePage> {
                                   .toString()
                                   .split('T')[0]),
                             ],
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           ),
                           ElevatedButton(
                               onPressed: () {
                                 _backend.updateExample(examples[index]);
                               },
-                              child: Text('Update')),
+                              child: const Text('Update')),
                           ElevatedButton(
                               onPressed: () {
                                 _backend.deleteExample(examples[index].id);
-                              }, child: Text('Delete')),
+                              }, child: const Text('Delete')),
                         ],
                       ),
                     );
@@ -90,17 +91,17 @@ class _MyHomePageState extends State<MyHomePage> {
               onPressed: () {
                 _backend.createExample();
               },
-              child: Text('Create')),
+              child: const Text('Create')),
           ElevatedButton(
               onPressed: () {
                 _backend.clearDatabase();
               },
-              child: Text('Clear examples')),
+              child: const Text('Clear examples')),
           ElevatedButton(
               onPressed: () {
                 _backend.syncExamplesToServer();
               },
-              child: Text('SyncExamples')),
+              child: const Text('SyncExamples')),
         ],
       ),
     );

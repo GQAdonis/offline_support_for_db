@@ -1,0 +1,38 @@
+{
+    "projectId": "632da69f3cc14b8f209c",
+    "projectName": "Example",
+    "functions": [
+        {
+            "$id": "6334797502945a2b5519",
+            "name": "My Function",
+            "runtime": "dart-2.17",
+            "path": "functions/My Awesome Function",
+            "entrypoint": "lib/main.dart",
+            "ignore": [
+                ".packages",
+                ".dart_tool"
+            ],
+            "execute": [],
+            "events": [],
+            "schedule": "",
+            "timeout": 15
+        },
+        {
+            "$id": "liveQuery",
+            "name": "liveQuery",
+            "runtime": "dart-2.17",
+            "path": "functions/liveQuery",
+            "entrypoint": "lib/main.dart",
+            "ignore": [
+                ".packages",
+                ".dart_tool"
+            ],
+            "execute": [],
+            "events": [
+                "databases.ExampleDatabase.collections.Examples"
+            ],
+            "schedule": "",
+            "timeout": 15
+        }
+    ]
+}
