@@ -9,13 +9,14 @@ class ExampleModel{
   late String text;
   late String? updatedAt;
   late String? createdAt;
+  late Map<DateTime,List<Map<String,dynamic>>> changeLog;
 
-  late String? syncedAt;
+
 
   ExampleModel(
       {this.id,
       required this.text,
       this.updatedAt,
       this.createdAt,
-      this.syncedAt});
+    });
 }

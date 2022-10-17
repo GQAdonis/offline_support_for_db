@@ -15,14 +15,13 @@ class Backend {
   late final Isar _isar;
   final Client _client = Client(
           endPoint:
-              'https://8080-appwrite-integrationfor-52tyj68ojp0.ws-eu67.gitpod.io/v1')
+              'http://8080-appwrite-integrationfor-52tyj68ojp0.ws-eu71.gitpod.io/v1')
       .setProject('632da69f3cc14b8f209c')
       .setSelfSigned(status: true);
   late final Functions _functions = Functions(_client);
   late final Realtime _realtime = Realtime(_client);
   late final Account _account = Account(_client);
   late final Databases _databases = Databases(_client);
-
 
   init() async {
       _isar = await Isar.open([ExampleModelSchema, PendingModelSchema]);
@@ -52,10 +51,12 @@ class Backend {
     ExampleModel example = ExampleModel(text: id.toString());
     example
       ..id = id
-      ..syncedAt = null
       ..updatedAt = now
       ..createdAt = now;
+
+    
     await _isar.writeTxn(() async {
+      _isar.pendingModels.put(PendingModel(id: example.id!, action: Action.create.toString(), data: {}));
       _isar.exampleModels.put(example);
     });
   }
@@ -64,20 +65,16 @@ class Backend {
     String now = DateTime.now().toIso8601String();
     example
       ..text = Random().hashCode.toString()
-      ..syncedAt = null
       ..updatedAt = now;
     _isar.writeTxn(() async {
+      _isar.pendingModels.put(PendingModel(id: example.id!, action: Action.update.toString(), data: {}));
       _isar.exampleModels.put(example);
     });
   }
 
   deleteExample(int id) {
     _isar.writeTxn(() async {
-      ExampleModel? exampleModel = await _isar.exampleModels.get(id);
-      if (exampleModel!.createdAt != exampleModel.updatedAt ||
-          exampleModel.syncedAt != null) {
-        _isar.pendingModels.put(PendingModel(id: id)..action = 'delete');
-      }
+      _isar.pendingModels.put(PendingModel(id: id, action: Action.delete.toString(), data: null));
       _isar.exampleModels.delete(id);
     });
   }
@@ -92,7 +89,7 @@ class Backend {
     return _isar.exampleModels.where().watch();
   }
 
-  appwriteWatchExamples() async {
+  /*appwriteWatchExamples() async {
     await Databases(_client)
         .listDocuments(databaseId: 'ExampleDatabase', collectionId: 'Examples')
         .then((value) async {
@@ -139,7 +136,7 @@ class Backend {
       
       // Todo Reopen or pending
     })..onDone(() {print('test');});
-  }
+  }*/
 
   syncExamplesToServer() async {
     await _isar.writeTxn(() async {
@@ -206,6 +203,79 @@ class Backend {
           }
         });
       }
+    });
+  }
+
+  pushPendingUpdates() async {
+    await _isar.writeTxn(() async {
+      List<PendingModel> pendingList =
+      await _isar.pendingModels.filter().actionEqualTo(Action.update.toString()).findAll();
+
+      for (var example in pendingList) {
+        await Databases(_client).updateDocument(
+            databaseId: example.database,
+            collectionId: example.collection,
+            documentId: example.id.toString(),
+            data: example.data
+        ).then((value) async {
+          print('UpdateSuccess');
+          _isar.pendingModels.delete(example.id);
+        }, onError: (e) {
+          print('offline update');
+        });
+      }
+    });
+  }
+
+  pushPendingCreates() async {
+    await _isar.writeTxn(() async {
+      List<PendingModel> pendingList =
+      await _isar.pendingModels.filter().actionEqualTo(Action.create.toString()).findAll();
+
+      for (var example in pendingList) {
+        await Databases(_client).createDocument(
+            databaseId: example.database,
+            collectionId: example.collection,
+            documentId: example.id.toString(),
+            data: example.data!
+        ).then((value) async {
+          print('UpdateSuccess');
+          _isar.pendingModels.delete(example.id);
+        }, onError: (e) {
+          print('offline update');
+        });
+      }
+    });
+  }
+
+  pushPendingDeletes() async {
+    await _isar.writeTxn(() async {
+      List<PendingModel> pendingList =
+      await _isar.pendingModels.filter().actionEqualTo('delete').findAll();
+
+      for (var pendingDelete in pendingList) {
+        await Databases(_client)
+            .deleteDocument(
+          databaseId: 'ExampleDatabase',
+          collectionId: 'Examples',
+          documentId: pendingDelete.id.toString(),
+        )
+            .then((value) async {
+          print('DeleteSuccess');
+          _isar.pendingModels.delete(pendingDelete.id!);
+        }, onError: (e) {
+          print(e.code);
+          if(e.code == 404){
+            _isar.pendingModels.delete(pendingDelete.id!);
+          }
+        });
+      }
+    });
+  }
+
+  pushPendingFunctionCalls() async {
+    await _isar.writeTxn(() async {
+
     });
   }
 
