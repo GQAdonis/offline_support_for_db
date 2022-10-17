@@ -24,7 +24,7 @@ class Backend {
   late final Databases _databases = Databases(_client);
 
   init() async {
-      _isar = await Isar.open([ExampleModelSchema, PendingModelSchema]);
+      _isar = await Isar.open([LocalDataModelShema, PendingModelSchema]);
       openNetworkWatcher();
   }
 
@@ -54,10 +54,23 @@ class Backend {
       ..updatedAt = now
       ..createdAt = now;
 
-    
+
     await _isar.writeTxn(() async {
       _isar.pendingModels.put(PendingModel(id: example.id!, action: Action.create.toString(), data: {}));
       _isar.exampleModels.put(example);
+    });
+  }
+  
+  createAtServer({
+    required String collectionId,
+    required String databaseId,
+    required int id,
+    required Map<String,dynamic> data
+  }) async {
+
+    await _isar.writeTxn(() async {
+        _isar.pendingModels.put(PendingModel(id: id, action: Action.create.toString(), data: data));
+      _isar.local.put(LocalDataModel(databaseId, collectionId, id, data));
     });
   }
 

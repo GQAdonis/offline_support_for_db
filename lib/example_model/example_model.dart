@@ -20,3 +20,13 @@ class ExampleModel{
       this.createdAt,
     });
 }
+
+@Collection()
+class LocalDataModel{
+  late String database;
+  late String collection;
+  Id? id;
+  late Map<String,dynamic> data;
+
+  LocalDataModel(this.database, this.collection, this.id, this.data);
+}
